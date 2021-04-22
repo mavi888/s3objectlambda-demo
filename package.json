@@ -1,0 +1,16 @@
+{
+  "name": "s3-object-lambda-test1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "anonymizer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.883.0",
+    "axios": "^0.21.1"
+  }
+}

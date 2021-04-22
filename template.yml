@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  S3BucketWithPii:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join ["-", [ !Ref AWS::StackName, "bucket-with-pii"]]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+
+  S3BucketAccessPoint:
+    Type: AWS::S3::AccessPoint
+    Properties: 
+      Bucket: !Ref S3BucketWithPii
+      Name: bucket-with-pii-access-point
+
+  S3LambdaAccessPoint:
+    Type: AWS::S3ObjectLambda::AccessPoint
+    Properties: 
+      Name: bucket-with-pii-lambda-access-point
+      ObjectLambdaConfiguration: 
+        SupportingAccessPoint: !Join
+          - ''
+          - - 'arn:'
+            - !Ref AWS::Partition
+            - ':s3:'
+            - !Ref AWS::Region
+            - ':'
+            - !Ref AWS::AccountId
+            - ':accesspoint/'
+            - !Ref S3BucketAccessPoint
+        TransformationConfigurations: 
+          - Actions: 
+            - GetObject
+            ContentTransformation:
+              AwsLambda: 
+                FunctionArn: !GetAtt AnonymiserFunction.Arn
+
+  AnonymiserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: anonymizer.handler
+      Runtime: nodejs12.x
+      Policies:
+      - Statement:
+        - Sid: WriteS3GetObjectResponse
+          Effect: Allow
+          Action:
+          - s3-object-lambda:WriteGetObjectResponse
+          Resource: '*'
+        - Sid: UseComprehend
+          Effect: Allow
+          Action: 
+          - comprehend:DetectPiiEntities
+          Resource: '*'
+
+Outputs:
+  AnonymiserFunction:
+    Description: "Anonymiser Lambda Function ARN"
+    Value: !GetAtt AnonymiserFunction.Arn
+  S3LambdaAccessPointArn:
+    Description: "ARN for the S3 Lambda Access Point"
+    Value: !GetAtt S3LambdaAccessPoint.Arn
